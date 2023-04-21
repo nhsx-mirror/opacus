@@ -22,6 +22,7 @@ from typing import Iterable, List, Tuple
 
 import torch
 import torch.nn as nn
+
 from opacus.grad_sample.functorch import ft_compute_per_sample_gradient, prepare_layer
 from opacus.grad_sample.gsm_base import AbstractGradSampleModule
 from opacus.layers.dp_rnn import DPGRU, DPLSTM, DPRNN, RNNLinear
@@ -32,13 +33,10 @@ from opacus.utils.module_utils import (
     trainable_parameters,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
-def create_or_accumulate_grad_sample(
-    *, param: torch.Tensor, grad_sample: torch.Tensor, max_batch_len: int
-) -> None:
+def create_or_accumulate_grad_sample(*, param: torch.Tensor, grad_sample: torch.Tensor, max_batch_len: int) -> None:
     """
     Creates a ``_current_grad_sample`` attribute in the given parameter, or adds to it
     if the ``_current_grad_sample`` attribute already exists.
@@ -129,10 +127,7 @@ class GradSampleModule(AbstractGradSampleModule):
 
         errors = self.validate(module=m, strict=strict)
         if errors and not strict:
-            logger.info(
-                f"GradSampleModule found the following errors: {errors}."
-                "Using non-strict mode, continuing"
-            )
+            logger.info(f"GradSampleModule found the following errors: {errors}." "Using non-strict mode, continuing")
 
         self.hooks_enabled = False
         self.batch_first = batch_first
@@ -201,10 +196,8 @@ class GradSampleModule(AbstractGradSampleModule):
             if force_functorch or not type(module) in self.GRAD_SAMPLERS:
                 prepare_layer(module, batch_first=batch_first)
 
-            self.autograd_grad_sample_hooks.append(
-                module.register_forward_hook(self.capture_activations_hook)
-            )
-
+            self.autograd_grad_sample_hooks.append(module.register_forward_hook(self.capture_activations_hook))
+            print("Registering")
             self.autograd_grad_sample_hooks.append(
                 module.register_full_backward_hook(
                     partial(
@@ -270,11 +263,7 @@ class GradSampleModule(AbstractGradSampleModule):
         forward_input: List[torch.Tensor],
         _forward_output: torch.Tensor,
     ):
-        if (
-            not requires_grad(module)
-            or not module.training
-            or not torch.is_grad_enabled()
-        ):
+        if not requires_grad(module) or not module.training or not torch.is_grad_enabled():
             return
 
         if not self.hooks_enabled:
@@ -336,9 +325,7 @@ class GradSampleModule(AbstractGradSampleModule):
 
         grad_samples = grad_sampler_fn(module, activations, backprops)
         for param, gs in grad_samples.items():
-            create_or_accumulate_grad_sample(
-                param=param, grad_sample=gs, max_batch_len=module.max_batch_len
-            )
+            create_or_accumulate_grad_sample(param=param, grad_sample=gs, max_batch_len=module.max_batch_len)
 
         # Detect end of current batch processing and switch accumulation
         # mode from sum to stacking. Used for RNNs and tied parameters
@@ -371,10 +358,7 @@ class GradSampleModule(AbstractGradSampleModule):
             batch_first: True is batch dimension is first
         """
         if not hasattr(module, "activations"):
-            raise ValueError(
-                f"No activations detected for {type(module)},"
-                " run forward after add_hooks(model)"
-            )
+            raise ValueError(f"No activations detected for {type(module)}," " run forward after add_hooks(model)")
 
         batch_dim = 0 if batch_first or type(module) is RNNLinear else 1
 
@@ -393,19 +377,12 @@ class GradSampleModule(AbstractGradSampleModule):
         elif loss_reduction == "sum":
             backprops = backprops
         else:
-            raise ValueError(
-                f"loss_reduction = {loss_reduction}. Only 'sum' and 'mean' losses are supported"
-            )
+            raise ValueError(f"loss_reduction = {loss_reduction}. Only 'sum' and 'mean' losses are supported")
 
         # No matter where the batch dimension was, .grad_samples will *always* put it in the first dim
         if batch_dim != 0:
-            activations = [
-                t.permute([batch_dim] + [x for x in range(t.dim()) if x != batch_dim])
-                for t in activations
-            ]
-            backprops = backprops.permute(
-                [batch_dim] + [x for x in range(backprops.dim()) if x != batch_dim]
-            )
+            activations = [t.permute([batch_dim] + [x for x in range(t.dim()) if x != batch_dim]) for t in activations]
+            backprops = backprops.permute([batch_dim] + [x for x in range(backprops.dim()) if x != batch_dim])
 
         return activations, backprops
 
@@ -432,9 +409,7 @@ class GradSampleModule(AbstractGradSampleModule):
         return True
 
     @classmethod
-    def validate(
-        cls, module: nn.Module, *, strict: bool = False
-    ) -> List[NotImplementedError]:
+    def validate(cls, module: nn.Module, *, strict: bool = False) -> List[NotImplementedError]:
         """
         Check if per sample gradients can be fully computed for a given model
 
