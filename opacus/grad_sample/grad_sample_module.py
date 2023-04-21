@@ -197,7 +197,7 @@ class GradSampleModule(AbstractGradSampleModule):
                 prepare_layer(module, batch_first=batch_first)
 
             self.autograd_grad_sample_hooks.append(module.register_forward_hook(self.capture_activations_hook))
-
+            print("USING CUSTOM OPACUS AND REGISTERING FULL BACKWARD HOOK")
             self.autograd_grad_sample_hooks.append(
                 module.register_full_backward_hook(
                     partial(
